@@ -330,26 +330,62 @@ const renderUserBar = (profile) => {
   }
 };
 
-const authErrorMessage = (error) => {
+const authErrorMessage = (error, context = "default") => {
+  const code = error?.code || "";
+
+  if (context === "login") {
+    const loginMessages = {
+      "auth/invalid-credential": "Senha incorreta.",
+      "auth/wrong-password": "Senha incorreta.",
+      "auth/user-not-found": "Conta nao cadastrada.",
+      "auth/invalid-email": "Informe um email valido.",
+      "auth/too-many-requests": "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.",
+      "permission-denied": "Conta nao cadastrada na dashboard."
+    };
+    return loginMessages[code] || "Nao foi possivel entrar. Confira email e senha.";
+  }
+
+  if (context === "reset") {
+    const resetMessages = {
+      "auth/invalid-email": "Informe um email valido.",
+      "auth/user-not-found": "Conta nao cadastrada.",
+      "auth/too-many-requests": "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente."
+    };
+    return resetMessages[code] || "Nao foi possivel enviar a redefinicao de senha.";
+  }
+
+  if (context === "register") {
+    const registerMessages = {
+      "auth/email-already-in-use": "Este email ja possui cadastro.",
+      "auth/invalid-email": "Informe um email valido.",
+      "auth/too-many-requests": "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.",
+      "auth/weak-password": "Use uma senha com pelo menos 6 caracteres.",
+      "permission-denied": "Conta criada, mas o perfil nao foi salvo. Publique as regras do Firestore."
+    };
+    return registerMessages[code] || "Nao foi possivel criar a conta.";
+  }
+
   const messages = {
     "auth/email-already-in-use": "Este email ja possui cadastro.",
     "auth/invalid-email": "Informe um email valido.",
-    "auth/invalid-credential": "Email ou senha incorretos.",
-    "auth/operation-not-allowed": "Ative Email/Senha no Firebase Authentication.",
-    "auth/too-many-requests": "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
-    "auth/unauthorized-continue-uri": "Autorize este dominio no Firebase Authentication.",
-    "auth/user-not-found": "Nao encontramos cadastro para este email.",
-    "auth/weak-password": "Use uma senha com pelo menos 6 caracteres."
+    "auth/invalid-credential": "Senha incorreta.",
+    "auth/operation-not-allowed": "Login por email e senha nao esta ativo.",
+    "auth/too-many-requests": "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.",
+    "auth/unauthorized-continue-uri": "Dominio nao autorizado no Firebase.",
+    "auth/user-not-found": "Conta nao cadastrada.",
+    "auth/weak-password": "Use uma senha com pelo menos 6 caracteres.",
+    "permission-denied": "Sem permissao para concluir esta acao."
   };
 
-  const message = messages[error.code] || `Nao foi possivel concluir. ${error.message || ""}`.trim();
-  return error.code ? `${message} (${error.code})` : message;
+  return messages[code] || "Nao foi possivel concluir.";
 };
 
 const bindLoginPage = () => {
   const loginForm = document.querySelector("#loginForm");
   const registerForm = document.querySelector("#registerForm");
   const forgotPasswordButton = document.querySelector("#forgotPasswordButton");
+  const resetPasswordForm = document.querySelector("#resetPasswordForm");
+  const hideResetPasswordButton = document.querySelector("#hideResetPasswordButton");
 
   document.querySelectorAll('input[type="email"]').forEach((input) => {
     input.addEventListener("blur", () => {
@@ -376,12 +412,11 @@ const bindLoginPage = () => {
       const profile = await ensureUserProfile(credential.user);
 
       if (!credential.user.emailVerified && !profile.approved) {
-        await sendEmailVerification(credential.user, verificationSettings());
         await signOut(auth);
         statusText(
           "#loginStatus",
-          "Confirme seu email antes de entrar. Reenviamos o link de confirmacao. Se nao chegar, peca liberacao manual ao administrador.",
-          "success"
+          "Precisa confirmar o email antes de entrar.",
+          "error"
         );
         return;
       }
@@ -390,34 +425,49 @@ const bindLoginPage = () => {
       await loadRoleAccess();
       window.location.replace(sanitizeReturnPage(returnPage, profile.role));
     } catch (error) {
-      const email = emailFromForm(loginForm);
-      statusText("#loginStatus", `${authErrorMessage(error)} Email enviado: "${email}".`);
+      statusText("#loginStatus", authErrorMessage(error, "login"));
     } finally {
       setBusy(loginForm, false);
     }
   });
 
-  forgotPasswordButton?.addEventListener("click", async () => {
-    if (!loginForm) return;
+  forgotPasswordButton?.addEventListener("click", () => {
+    if (!resetPasswordForm) return;
+    resetPasswordForm.hidden = false;
+    statusText("#loginStatus", "");
 
-    setBusy(loginForm, true);
-    statusText("#loginStatus", "Enviando recuperacao de senha...", "info");
+    const loginEmail = cleanEmail(loginForm?.querySelector('input[name="email"]')?.value);
+    const resetEmailInput = resetPasswordForm.querySelector('input[name="email"]');
+    if (resetEmailInput && loginEmail) resetEmailInput.value = loginEmail;
+    resetEmailInput?.focus();
+  });
+
+  hideResetPasswordButton?.addEventListener("click", () => {
+    if (!resetPasswordForm) return;
+    resetPasswordForm.hidden = true;
+    resetPasswordForm.reset();
+    statusText("#resetPasswordStatus", "");
+  });
+
+  resetPasswordForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setBusy(resetPasswordForm, true);
+    statusText("#resetPasswordStatus", "Enviando recuperacao de senha...", "info");
 
     try {
-      const email = emailFromForm(loginForm);
+      const email = emailFromForm(resetPasswordForm);
 
       if (!isValidEmail(email)) {
-        statusText("#loginStatus", `Email lido como "${email}". Confira se esta completo.`);
+        statusText("#resetPasswordStatus", `Email lido como "${email}". Confira se esta completo.`);
         return;
       }
 
       await sendPasswordResetEmail(auth, email, verificationSettings());
-      statusText("#loginStatus", "Enviamos um link para redefinir sua senha. Confira seu email.", "success");
+      statusText("#resetPasswordStatus", "Enviamos um link para redefinir sua senha. Confira seu email.", "success");
     } catch (error) {
-      const email = emailFromForm(loginForm);
-      statusText("#loginStatus", `${authErrorMessage(error)} Email enviado: "${email}".`);
+      statusText("#resetPasswordStatus", authErrorMessage(error, "reset"));
     } finally {
-      setBusy(loginForm, false);
+      setBusy(resetPasswordForm, false);
     }
   });
 
@@ -467,7 +517,7 @@ const bindLoginPage = () => {
         if (profileError.code === "permission-denied") {
           statusText(
             "#registerStatus",
-            "Conta criada e email enviado, mas ela ainda nao aparece no painel porque o Firestore bloqueou salvar o perfil. Publique as regras do arquivo firestore.rules e faca login com essa conta uma vez.",
+            "Conta criada, mas o perfil nao foi salvo. Publique as regras do Firestore.",
             "error"
           );
           await signOut(auth);
@@ -486,8 +536,7 @@ const bindLoginPage = () => {
         "success"
       );
     } catch (error) {
-      const email = emailFromForm(registerForm);
-      statusText("#registerStatus", `${authErrorMessage(error)} Email enviado: "${email}".`);
+      statusText("#registerStatus", authErrorMessage(error, "register"));
     } finally {
       setBusy(registerForm, false);
     }
@@ -802,6 +851,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     renderUserBar(profile);
+    document.documentElement.dataset.authReady = "true";
 
     if (currentPage() === "usuarios.html") {
       renderUsersPage(profile);

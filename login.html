@@ -123,6 +123,15 @@
         line-height: 1.45;
       }
 
+      .reset-block {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #f8fcff;
+      }
+
       form {
         display: grid;
         gap: 14px;
@@ -195,8 +204,8 @@
         }
       }
     </style>
-    <link rel="stylesheet" href="brand.css?v=20260608-1" />
-    <script type="module" src="auth.js?v=20260608-5"></script>
+    <link rel="stylesheet" href="brand.css?v=20260608-2" />
+    <script type="module" src="auth.js?v=20260608-8"></script>
   </head>
   <body>
     <main>
@@ -229,6 +238,16 @@
               <button type="submit">Entrar</button>
               <button class="ghost" id="forgotPasswordButton" type="button">Esqueceu sua senha?</button>
               <p class="status" id="loginStatus" aria-live="polite"></p>
+            </form>
+
+            <form class="reset-block" id="resetPasswordForm" hidden>
+              <label>
+                Email para redefinir senha
+                <input name="email" type="email" autocomplete="email" required />
+              </label>
+              <button type="submit">Enviar link de redefinicao</button>
+              <button class="ghost" id="hideResetPasswordButton" type="button">Cancelar</button>
+              <p class="status" id="resetPasswordStatus" aria-live="polite"></p>
             </form>
           </section>
 

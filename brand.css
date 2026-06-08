@@ -15,6 +15,18 @@
   background: transparent;
 }
 
+html:not([data-auth-ready="true"]) .cards,
+html:not([data-auth-ready="true"]) .switcher,
+html:not([data-auth-ready="true"]) .view-switcher,
+html:not([data-auth-ready="true"]) .dashboard-nav,
+html:not([data-auth-ready="true"]) main.presentation,
+html:not([data-auth-ready="true"]) main.screen,
+html:not([data-auth-ready="true"]) .app-shell,
+html:not([data-auth-ready="true"]) .page-shell,
+html:not([data-auth-ready="true"]) body > .app-header {
+  visibility: hidden;
+}
+
 .uni-brand--sidebar {
   width: 156px;
   margin: 0;
