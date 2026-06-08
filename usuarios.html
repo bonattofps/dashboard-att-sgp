@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SGP - Usuarios</title>
+    <script type="module" src="auth.js?v=20260608-5"></script>
+    <link rel="stylesheet" href="brand.css?v=20260608-1" />
+    <style>
+      :root {
+        --bg: #f4fbff;
+        --panel: #ffffff;
+        --border: #cfe2ee;
+        --text: #102033;
+        --muted: #567086;
+        --green: #009c67;
+        --blue: #38bdf8;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        background:
+          radial-gradient(circle at 12% 0%, rgba(32, 199, 123, 0.13), transparent 28%),
+          linear-gradient(135deg, #f4fbff 0%, #ffffff 46%, #eef8f4 100%);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .screen {
+        width: min(1320px, 100%);
+        min-height: 100vh;
+        margin: 0 auto;
+        padding: 30px 22px;
+        display: grid;
+        gap: 20px;
+      }
+
+      .header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 18px;
+      }
+
+      .eyebrow {
+        margin: 0 0 8px;
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 3.6rem);
+        line-height: 1.04;
+        letter-spacing: 0;
+      }
+
+      .switcher {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .switcher a {
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0 11px;
+        color: var(--text);
+        background: #ffffff;
+        text-decoration: none;
+        font-size: 0.86rem;
+        font-weight: 800;
+      }
+
+      .switcher a.active {
+        border-color: var(--green);
+        color: #ffffff;
+        background: var(--green);
+      }
+
+      .notice,
+      .panel {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 18px 42px rgba(20, 75, 110, 0.1);
+      }
+
+      .notice {
+        padding: 14px 16px;
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      .panel {
+        overflow: hidden;
+      }
+
+      .panel-head {
+        padding: 18px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .panel-head h2 {
+        margin: 0;
+        font-size: 1.25rem;
+      }
+
+      .table-scroll {
+        overflow: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 760px;
+      }
+
+      th,
+      td {
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        vertical-align: middle;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      select {
+        min-height: 36px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0 10px;
+        background: #ffffff;
+        color: var(--text);
+        font: inherit;
+        font-weight: 800;
+      }
+
+      .create-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        padding: 18px;
+      }
+
+      .create-grid label {
+        display: grid;
+        gap: 7px;
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      .create-grid input,
+      .create-grid select {
+        width: 100%;
+        min-height: 40px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0 10px;
+        background: #ffffff;
+        color: var(--text);
+        font: inherit;
+      }
+
+      .check-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+      }
+
+      .check-row input {
+        width: auto;
+        min-height: auto;
+      }
+
+      .create-actions {
+        align-self: end;
+      }
+
+      .permission-check {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+      }
+
+      .permission-check input {
+        width: 18px;
+        height: 18px;
+      }
+
+      button {
+        min-height: 40px;
+        border: 1px solid var(--green);
+        border-radius: 8px;
+        padding: 0 14px;
+        background: var(--green);
+        color: #ffffff;
+        font: inherit;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      button.danger {
+        border-color: #dc2626;
+        background: #dc2626;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      @media (max-width: 820px) {
+        .header {
+          grid-template-columns: 1fr;
+        }
+
+        .switcher {
+          justify-content: flex-start;
+        }
+
+        .create-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="screen">
+      <header class="header">
+        <div>
+          <a class="uni-brand uni-brand--small" href="index.html" aria-label="Uni Internet">
+            <img src="logo.png" alt="Uni Internet" />
+          </a>
+          <p class="eyebrow">SGP - Sistema Gestao do Suporte</p>
+          <h1>Usuarios e cargos</h1>
+        </div>
+        <div class="switcher">
+          <a href="apresentacao.html">Indicadores Gerais</a>
+          <a href="colaboradores.html">Colaboradores</a>
+          <a href="operacional.html">Reincidencia</a>
+          <a href="ocorrencias.html">Ocorrencias</a>
+          <a href="jornada.html">Jornadas - N1</a>
+          <a href="cto.html">CTO e PPPoE</a>
+          <a class="active" href="usuarios.html">Usuarios</a>
+        </div>
+      </header>
+
+      <section class="notice" id="usersStatus">Carregando usuarios...</section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <p class="eyebrow">Novo acesso</p>
+          <h2>Criar usuario</h2>
+        </div>
+        <form class="create-grid" id="adminCreateUserForm">
+          <label>
+            Nome
+            <input name="name" type="text" autocomplete="off" required />
+          </label>
+          <label>
+            Email
+            <input name="email" type="email" autocomplete="off" required />
+          </label>
+          <label>
+            Senha
+            <input name="password" type="password" minlength="6" autocomplete="new-password" required />
+          </label>
+          <label>
+            Cargo
+            <select name="role">
+              <option value="viewer">Viewer</option>
+              <option value="n1">N1</option>
+              <option value="n2">N2</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="gerente">Gerente</option>
+              <option value="administrador">Administrador</option>
+            </select>
+          </label>
+          <label class="check-row">
+            <input name="approved" type="checkbox" checked />
+            Liberar sem confirmacao
+          </label>
+          <label class="check-row">
+            <input name="sendVerification" type="checkbox" />
+            Enviar confirmacao por email
+          </label>
+          <div class="create-actions">
+            <button type="submit">Criar usuario</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <p class="eyebrow">Permissoes</p>
+          <h2>Dashboards por cargo</h2>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead id="permissionsHead"></thead>
+            <tbody id="permissionsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <p class="eyebrow">Acessos</p>
+          <h2>Cadastros da dashboard</h2>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Confirmacao</th>
+                <th>Liberacao</th>
+                <th>Cargo</th>
+                <th>Criado em</th>
+                <th>Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
