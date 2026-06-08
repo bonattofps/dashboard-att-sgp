@@ -62,5 +62,15 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if isAdministrador();
     }
+
+    match /emailIndex/{emailKey} {
+      allow read: if true;
+      allow create, update: if signedIn()
+        && (
+          request.resource.data.uid == request.auth.uid
+          || isAdministrador()
+        );
+      allow delete: if isAdministrador();
+    }
   }
 }

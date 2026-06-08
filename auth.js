@@ -199,6 +199,29 @@ const verificationSettings = () => ({
 });
 
 const userRef = (uid) => doc(db, "users", uid);
+const emailIndexKey = (email) => encodeURIComponent(cleanEmail(email));
+const emailIndexRef = (email) => doc(db, "emailIndex", emailIndexKey(email));
+
+const isEmailIndexed = async (email) => {
+  try {
+    const snapshot = await getDoc(emailIndexRef(email));
+    return snapshot.exists();
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+};
+
+const ensureEmailIndex = async (uid, email) => {
+  const normalizedEmail = cleanEmail(email);
+  if (!uid || !isValidEmail(normalizedEmail)) return;
+
+  await setDoc(emailIndexRef(normalizedEmail), {
+    uid,
+    email: normalizedEmail,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+};
 
 const ensureUserProfile = async (user) => {
   const ref = userRef(user.uid);
@@ -219,6 +242,7 @@ const ensureUserProfile = async (user) => {
       updatedAt: serverTimestamp()
     };
     await setDoc(ref, createdProfile);
+    await ensureEmailIndex(user.uid, baseProfile.email);
     return createdProfile;
   }
 
@@ -238,6 +262,7 @@ const ensureUserProfile = async (user) => {
     });
   }
 
+  await ensureEmailIndex(user.uid, baseProfile.email);
   return profile;
 };
 
@@ -330,13 +355,15 @@ const renderUserBar = (profile) => {
   }
 };
 
-const authErrorMessage = (error, context = "default") => {
+const authErrorMessage = (error, context = "default", options = {}) => {
   const code = error?.code || "";
 
   if (context === "login") {
+    if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
+      return options.emailIndexed ? "Senha incorreta." : "Conta nao cadastrada.";
+    }
+
     const loginMessages = {
-      "auth/invalid-credential": "Senha incorreta.",
-      "auth/wrong-password": "Senha incorreta.",
       "auth/user-not-found": "Conta nao cadastrada.",
       "auth/invalid-email": "Informe um email valido.",
       "auth/too-many-requests": "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.",
@@ -425,7 +452,9 @@ const bindLoginPage = () => {
       await loadRoleAccess();
       window.location.replace(sanitizeReturnPage(returnPage, profile.role));
     } catch (error) {
-      statusText("#loginStatus", authErrorMessage(error, "login"));
+      const email = emailFromForm(loginForm);
+      const emailIndexed = await isEmailIndexed(email);
+      statusText("#loginStatus", authErrorMessage(error, "login", { emailIndexed }));
     } finally {
       setBusy(loginForm, false);
     }
@@ -507,6 +536,7 @@ const bindLoginPage = () => {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         }, { merge: true });
+        await ensureEmailIndex(credential.user.uid, email);
 
         const savedProfile = await getDoc(userRef(credential.user.uid));
         if (!savedProfile.exists()) {
@@ -681,6 +711,7 @@ const renderUsersPage = async (profile) => {
         updatedAt: serverTimestamp(),
         createdBy: profile.uid
       });
+      await ensureEmailIndex(credential.user.uid, email);
 
       const savedProfile = await getDoc(userRef(credential.user.uid));
       if (!savedProfile.exists()) {
@@ -709,6 +740,10 @@ const renderUsersPage = async (profile) => {
     const users = snapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
       .sort((a, b) => String(a.email).localeCompare(String(b.email)));
+
+    users.forEach((user) => {
+      ensureEmailIndex(user.id, user.email).catch((error) => console.error(error));
+    });
 
     body.innerHTML = users.map((user) => `
       <tr>
@@ -791,6 +826,7 @@ const renderUsersPage = async (profile) => {
 
         try {
           await deleteDoc(userRef(uid));
+          await deleteDoc(emailIndexRef(email));
           status.textContent = "Cadastro excluido da dashboard.";
         } catch (error) {
           button.disabled = false;
