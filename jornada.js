@@ -10,7 +10,7 @@ const state = {
 };
 
 const GOOGLE_SHEETS_JORNADA_XLSX_URL = "https://docs.google.com/spreadsheets/d/17QoDe9GbP07OtEOD1Vq8gRCU-SVBctX6FJH3oGRpkOE/export?format=xlsx";
-const GOOGLE_SHEETS_JORNADA_NAME = "Google Sheets - Jornadas N1";
+const GOOGLE_SHEETS_JORNADA_NAME = "Google Sheets - Jornadas do Suporte";
 
 const elements = {
   workbookInput: document.getElementById("workbookInput"),

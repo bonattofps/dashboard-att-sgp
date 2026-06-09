@@ -61,8 +61,10 @@ const dashboardOptions = [
   { page: "colaboradores.html", label: "Colaboradores" },
   { page: "operacional.html", label: "Reincidencia" },
   { page: "ocorrencias.html", label: "Ocorrencias" },
-  { page: "jornada.html", label: "Jornadas - N1" },
+  { page: "jornada.html", label: "Jornadas do Suporte" },
   { page: "cto.html", label: "CTO e PPPoE" },
+  { page: "pendencias.html", label: "Central de Pendencias", adminOnly: true },
+  { page: "status-planilhas.html", label: "Status das Planilhas", adminOnly: true },
   { page: "usuarios.html", label: "Usuarios e cargos", adminOnly: true }
 ];
 
@@ -79,7 +81,7 @@ const defaultRoleAccess = {
   n2: ["index.html", "apresentacao.html", "colaboradores.html", "jornada.html", "cto.html"],
   supervisor: ["index.html", "apresentacao.html", "colaboradores.html", "operacional.html", "ocorrencias.html", "jornada.html", "cto.html"],
   gerente: ["index.html", "apresentacao.html", "colaboradores.html", "operacional.html", "ocorrencias.html", "jornada.html", "cto.html"],
-  administrador: ["index.html", "apresentacao.html", "colaboradores.html", "operacional.html", "ocorrencias.html", "jornada.html", "cto.html", "usuarios.html"]
+  administrador: ["index.html", "apresentacao.html", "colaboradores.html", "operacional.html", "ocorrencias.html", "jornada.html", "cto.html", "pendencias.html", "status-planilhas.html", "usuarios.html"]
 };
 
 const roleHome = {
@@ -95,9 +97,13 @@ let activeRoleAccess = structuredClone(defaultRoleAccess);
 
 const dashboardPages = new Set(dashboardOptions.map((dashboard) => dashboard.page));
 const publicPages = new Set([LOGIN_PAGE]);
+const ONLINE_WINDOW_MS = 2 * 60 * 1000;
+const PRESENCE_INTERVAL_MS = 45 * 1000;
 
 let activeProfile = null;
 let usersUnsubscribe = null;
+let presenceInterval = null;
+let presenceListenersBound = false;
 
 const ready = () => {
   if (document.readyState !== "loading") return Promise.resolve();
@@ -221,6 +227,47 @@ const ensureEmailIndex = async (uid, email) => {
     email: normalizedEmail,
     updatedAt: serverTimestamp()
   }, { merge: true });
+};
+
+const updatePresence = async (online = true) => {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  try {
+    await updateDoc(userRef(user.uid), {
+      online,
+      lastSeen: serverTimestamp()
+    });
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+const bindPresenceListeners = () => {
+  if (presenceListenersBound) return;
+  presenceListenersBound = true;
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && activeProfile) {
+      updatePresence(true);
+    }
+  });
+
+  window.addEventListener("pagehide", () => {
+    if (activeProfile) updatePresence(false);
+  });
+};
+
+const startPresence = () => {
+  bindPresenceListeners();
+  window.clearInterval(presenceInterval);
+  updatePresence(true);
+  presenceInterval = window.setInterval(() => updatePresence(true), PRESENCE_INTERVAL_MS);
+};
+
+const stopPresence = () => {
+  window.clearInterval(presenceInterval);
+  presenceInterval = null;
 };
 
 const ensureUserProfile = async (user) => {
@@ -578,6 +625,24 @@ const formatDate = (value) => {
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(value.toDate());
 };
 
+const dateFromTimestamp = (value) => value?.toDate?.() || null;
+
+const isUserOnline = (user) => {
+  const lastSeen = dateFromTimestamp(user.lastSeen);
+  return user.online === true && lastSeen && Date.now() - lastSeen.getTime() <= ONLINE_WINDOW_MS;
+};
+
+const formatPresence = (user) => {
+  const lastSeen = dateFromTimestamp(user.lastSeen);
+  if (isUserOnline(user)) return "Online agora";
+  if (!lastSeen) return "Sem atividade";
+
+  const diffMinutes = Math.max(1, Math.round((Date.now() - lastSeen.getTime()) / 60000));
+  if (diffMinutes < 60) return `Visto ha ${diffMinutes} min`;
+
+  return `Visto em ${formatDate(user.lastSeen)}`;
+};
+
 const saveRoleAccess = async (profile) => {
   activeRoleAccess.administrador = dashboardOptions
     .filter((dashboard) => !dashboard.systemOnly)
@@ -749,6 +814,11 @@ const renderUsersPage = async (profile) => {
       <tr>
         <td>${user.name || "-"}</td>
         <td>${user.email || "-"}</td>
+        <td>
+          <span class="presence-badge ${isUserOnline(user) ? "online" : ""}">
+            ${formatPresence(user)}
+          </span>
+        </td>
         <td>${user.emailVerified ? "Confirmado" : "Pendente"}</td>
         <td>
           <select data-user-approved="${user.id}" aria-label="Liberacao de ${user.email || "usuario"}">
@@ -845,7 +915,10 @@ window.SGPAuth = {
   canAccess,
   currentUser: () => activeProfile,
   logout() {
-    signOut(auth).finally(() => window.location.replace(LOGIN_PAGE));
+    stopPresence();
+    updatePresence(false).finally(() => {
+      signOut(auth).finally(() => window.location.replace(LOGIN_PAGE));
+    });
   }
 };
 
@@ -855,6 +928,7 @@ bindLoginPage();
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     activeProfile = null;
+    stopPresence();
     if (!publicPages.has(currentPage())) redirectToLogin();
     return;
   }
@@ -886,6 +960,7 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
+    startPresence();
     renderUserBar(profile);
     document.documentElement.dataset.authReady = "true";
 

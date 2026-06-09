@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SGP - Usuarios</title>
-    <script type="module" src="auth.js?v=20260608-9"></script>
+    <script type="module" src="auth.js?v=20260609-2"></script>
     <link rel="stylesheet" href="brand.css?v=20260608-2" />
     <style>
       :root {
@@ -232,6 +232,41 @@
         opacity: 0.55;
       }
 
+      .presence-badge {
+        display: inline-flex;
+        width: fit-content;
+        min-height: 30px;
+        align-items: center;
+        gap: 7px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0 10px;
+        color: var(--muted);
+        background: #ffffff;
+        font-size: 0.82rem;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .presence-badge::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #94a3b8;
+      }
+
+      .presence-badge.online {
+        border-color: rgba(0, 156, 103, 0.28);
+        color: #00764e;
+        background: rgba(0, 156, 103, 0.08);
+      }
+
+      .presence-badge.online::before {
+        background: var(--green);
+        box-shadow: 0 0 0 4px rgba(0, 156, 103, 0.12);
+      }
+
       @media (max-width: 820px) {
         .header {
           grid-template-columns: 1fr;
@@ -262,8 +297,10 @@
           <a href="colaboradores.html">Colaboradores</a>
           <a href="operacional.html">Reincidencia</a>
           <a href="ocorrencias.html">Ocorrencias</a>
-          <a href="jornada.html">Jornadas - N1</a>
+          <a href="jornada.html">Jornadas do Suporte</a>
           <a href="cto.html">CTO e PPPoE</a>
+          <a href="pendencias.html">Pendencias</a>
+          <a href="status-planilhas.html">Planilhas</a>
           <a class="active" href="usuarios.html">Usuarios</a>
         </div>
       </header>
@@ -337,6 +374,7 @@
               <tr>
                 <th>Nome</th>
                 <th>Email</th>
+                <th>Status</th>
                 <th>Confirmacao</th>
                 <th>Liberacao</th>
                 <th>Cargo</th>
